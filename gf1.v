@@ -558,12 +558,11 @@ module gf1
 	
 	reg dram_dma_hi_lo_byte_sel[0:1];
 	
-	assign dram_dma_in_data_sign[6:0] = dram_dma_in_data[6:0];
-	assign dram_dma_in_data_sign[14:8] = dram_dma_in_data[14:8];
-	assign dram_dma_in_data_sign[15] = dram_dma_in_data[15] ^ (dram_dma_chan_width & dram_dma_invert_msb);
-	
-	assign dram_dma_in_data_sign[7] = dram_dma_in_data[7] ^ (dram_dma_invert_msb &
-		(~dram_dma_data_size | (~dram_dma_hi_lo_byte_sel[1] & dram_dma_data_size & ~dram_dma_chan_width)));
+	assign dram_dma_in_data_sign = { dram_dma_in_data[15] ^ (dram_dma_chan_width & dram_dma_invert_msb),
+		dram_dma_in_data[14:8], 
+		dram_dma_in_data[7] ^ (dram_dma_invert_msb &
+		(~dram_dma_data_size | (~dram_dma_hi_lo_byte_sel[1] & dram_dma_data_size & ~dram_dma_chan_width))),
+		dram_dma_in_data[6:0] };
 	
 	reg dram_dma_write_state1;
 	reg dram_dma_write_state2;
@@ -717,7 +716,7 @@ module gf1
 	reg [8:0] pan_atten;
 	
 	wire [12:0] atten1 = { 1'h0, atten_l[1] } + { pan_atten, 4'h0 };
-	wire [11:0] atten = ((pan == 4'hf) | atten1[12]) ? 12'hfff : atten1[11:0];
+	wire [11:0] atten = ((pan == 4'hf) | atten1[12]) ? 12'h000 : atten1[11:0];
 	
 	reg [15:0] val_shifted;
 	
@@ -740,25 +739,21 @@ module gf1
 	
 	reg w2003;
 	
-	wire w2042 = ~(dac_counter[1][1] & dac_counter[1][2]);
-	wire w2045 = ~(~dac_counter[1][0] & ~dac_counter[1][1]);
-	wire w2043 = ~(w2042 & dac_counter[1][5] & ~dac_counter[1][4] & ~dac_counter[1][3]);
-	wire w2044 = ~(w2045 & dac_counter[1][4] & dac_counter[1][3] & dac_counter[1][2]);
-	wire w2020 = ~(w2043 & w2044);
-	wire w2029 = ~(~dac_counter[1][3] & dac_counter[1][2] & ~dac_counter[1][1] & dac_counter[1][0]);
-	wire w2022 = ~(~dac_counter[1][4] & ~dac_counter[1][5]);
-	wire w2021 = ~w2022;
-	wire w1999 = ~(w2029 | w2022);
-	wire w1998 = ~(w2020 | w1999);
-	
-	wire w2059 = ~(~dac_counter[1][5] & ~(dac_counter[1][4] & dac_counter[1][3] & dac_counter[1][2]));
-	
-	wire w2031 = ~(~dac_counter[1][3] | ~dac_counter[1][2] | ~dac_counter[1][1]);
-	
-	wire w2038 = ~(w2003 & (w1999 | w2022 | w2031));
-	
-	wire w2055 = ~(~dac_counter[1][5] | dac_counter[1][4] | ~dac_counter[1][3] | ~dac_counter[1][0]);
-	wire w2040 = ~(dac_counter[1][5] | dac_counter[1][4] | dac_counter[1][3] | ~dac_counter[1][0]);
+	reg w2042;
+	reg w2045;
+	reg w2043;
+	reg w2044;
+	reg w2020;
+	reg w2029;
+	reg w2022;
+	reg w2021;
+	reg w1999;
+	reg w1998;
+	reg w2059;
+	reg w2031;
+	reg w2038;
+	reg w2055;
+	reg w2040;
 	
 	assign DAC_DATA = accum_shifter[1][15];
 	
@@ -1495,12 +1490,15 @@ module gf1
 			ram_left_bus[1] <= ramp_next_l[5][0];
 		end
 		
-		if (w134)
-			w1800 = ram_strobe;
-		if (w100 | (w134 & ~w1863))
-			w1801 = ram_strobe;
-		if (w100 | (w134 & ~w1982))
-			w1944 = ram_strobe;
+		//if (w134)
+		//	w1800 = ram_strobe;
+		w1800 = ram_strobe & w134;
+		//if (w100 | (w134 & ~w1863))
+		//	w1801 = ram_strobe;
+		w1801 = ram_strobe & (w100 | (w134 & ~w1863));
+		//if (w100 | (w134 & ~w1982))
+		//	w1944 = ram_strobe;
+		w1944 = ram_strobe & (w100 | (w134 & ~w1982));
 		if (w1800 | w1801)
 		begin
 			ram_left_bus[145] <= ~ram_input_latch[145];
@@ -2155,8 +2153,6 @@ module gf1
 			dram_dma_rate0 <= 1'h0;
 			dram_dma_chan_width <= 1'h0;
 			dram_dma_dir <= 1'h0;
-			dram_dma_en_l <= 1'h0;
-			dram_dma_en <= 1'h0;
 	
 			timer_ctrl_b5_l <= 1'h0;
 			timer_ctrl_b5 <= 1'h0;
@@ -2177,6 +2173,12 @@ module gf1
 			dac_enable <= 1'h0;
 		end
 		
+		if (reset_reg | (dram_dma_tc & (dram_dma_dir | cls9_dma_write)))
+		begin
+			dram_dma_en_l <= 1'h0;
+			dram_dma_en <= 1'h0;
+		end
+		
 		if (RESET)
 		begin
 			reset_reg_not_l <= 1'h0;
@@ -2184,15 +2186,15 @@ module gf1
 		end
 		
 		if (((cpu_write_4 & IO16) | cpu_write_5) & glob_addr_43)
-			dram_peek_address[19:4] <= glob_data_l2;
+			dram_peek_address[15:0] <= glob_data_l2;
 		if (cpu_write_5 & glob_addr_44)
-			dram_peek_address[3:0] <= glob_data_l2[11:8];
+			dram_peek_address[19:16] <= glob_data_l2[11:8];
 		
 		if (glob_addr_41)
 		begin
 			glob_read_mux = { 
+				dram_dma_invert_msb,
 				dram_dma_irq_pending,
-				dram_dma_data_size,
 				dram_dma_irq_en_l,
 				dram_dma_rate1,
 				dram_dma_rate0,
@@ -2514,7 +2516,7 @@ module gf1
 		
 		if (dram_dma_tc)
 			dram_dma_irq_pending <= 1'h1;
-		else if (~dram_dma_tc & dram_dma_irq_ack)
+		else if (~dram_dma_tc & ~dram_dma_irq_ack)
 			dram_dma_irq_pending <= 1'h0;
 		
 		cls9_dma_write = clk_sel[9] & ~dram_dma_dir & dram_dma_access;
@@ -2594,7 +2596,7 @@ module gf1
 			dram_dma_address[0] <= { glob_data_l2, 4'h0 };
 			dram_dma_address[1] <= { glob_data_l2, 4'h0 };
 		end
-		else if (~cls9_dma_read | dram_dma_write_state2)
+		else if (cls9_dma_read | dram_dma_write_state2)
 			dram_dma_address[0] <= dram_dma_address[1] + 20'h1;
 		else
 			dram_dma_address[1] <= dram_dma_address[0];
@@ -2783,7 +2785,7 @@ module gf1
 		if (clk3)
 			mul_val_b <= interp_in_mul;
 		else if (clk1)
-			mul_val_b <= { 1'h1, ~atten[7:0] };
+			mul_val_b <= { 1'h1, atten[7:0] };
 		
 		mul_result <= mul_val_a_s * mul_val_b_s;
 		
@@ -2801,27 +2803,27 @@ module gf1
 			w2048 <= 1'h0;
 		
 		case (pan)
-			4'h0: pan_atten = 9'h1ff;
-			4'h1: pan_atten = 9'h01;
-			4'h2: pan_atten = 9'h03;
-			4'h3: pan_atten = 9'h05;
-			4'h4: pan_atten = 9'h07;
-			4'h5: pan_atten = 9'h09;
-			4'h6: pan_atten = 9'h0b;
-			4'h7: pan_atten = 9'h0d;
-			4'h8: pan_atten = 9'h0f;
-			4'h9: pan_atten = 9'h14;
-			4'ha: pan_atten = 9'h18;
-			4'hb: pan_atten = 9'h1d;
-			4'hc: pan_atten = 9'h25;
-			4'hd: pan_atten = 9'h2d;
-			4'he: pan_atten = 9'h3f;
+			4'h0: pan_atten = 9'h000;
+			4'h1: pan_atten = 9'h1fe;
+			4'h2: pan_atten = 9'h1fc;
+			4'h3: pan_atten = 9'h1fa;
+			4'h4: pan_atten = 9'h1f8;
+			4'h5: pan_atten = 9'h1f7;
+			4'h6: pan_atten = 9'h1f4;
+			4'h7: pan_atten = 9'h1f2;
+			4'h8: pan_atten = 9'h1f0;
+			4'h9: pan_atten = 9'h1eb;
+			4'ha: pan_atten = 9'h1e7;
+			4'hb: pan_atten = 9'h1e2;
+			4'hc: pan_atten = 9'h1da;
+			4'hd: pan_atten = 9'h1d2;
+			4'he: pan_atten = 9'h1c0;
 			default: pan_atten = 9'h0;
 		endcase
 		
 		if (clk2)
 		begin
-			val_shifted <= mul_result[24:9] >>> atten[11:8];
+			val_shifted <= {{15{mul_result[24]}}, mul_result[24:9]} >> (~atten[11:8]);
 		end
 		
 		if (w2416)
@@ -2889,42 +2891,59 @@ module gf1
 			w262_l[1] <= w262_l[0];
 		
 		
-		if (w2003)
-			dac_counter[0] <= dac_counter[1] + 6'h1;
+		if (~w2003)
+		begin
+			dac_counter[0] = dac_counter[1] + 6'h1;
+			w2008[0] = dac_counter[1][5] & dac_counter[1][4] & dac_counter[1][2];
+		end
 		else
-			dac_counter[1] <= dac_counter[0];
+		begin
+			dac_counter[1] = dac_counter[0];
+			w2008[1] = w2008[0];
+		end
+		
+		if (~dac_enable | w2008[1])
+			w2007 = 1'h1;
+		else if (~w262_l[2])
+			w2007 = 1'h0;
 		
 		if (w2007)
 		begin
-			dac_counter[0] <= 0;
-			dac_counter[1] <= 0;
+			dac_counter[0] = 0;
+			dac_counter[1] = 0;
 		end
-		
-		if (w2003)
-			w2008[0] <= dac_counter[1][5] & dac_counter[1][4] & dac_counter[1][2];
-		else
-			w2008[1] <= w2008[0];
-		
-		if (~dac_enable | w2008[1])
-			w2007 <= 1'h1;
-		else if (~w262_l[2])
-			w2007 <= 1'h0;
+	
+		w2042 = ~(dac_counter[1][1] & dac_counter[1][2]);
+		w2045 = ~(~dac_counter[1][0] & ~dac_counter[1][1]);
+		w2043 = ~(w2042 & dac_counter[1][5] & ~dac_counter[1][4] & ~dac_counter[1][3]);
+		w2044 = ~(w2045 & dac_counter[1][4] & dac_counter[1][3] & dac_counter[1][2]);
+		w2020 = ~(w2043 & w2044);
+		w2029 = ~(~dac_counter[1][3] & dac_counter[1][2] & ~dac_counter[1][1] & dac_counter[1][0]);
+		w2022 = ~(~dac_counter[1][4] & ~dac_counter[1][5]);
+		w2021 = ~w2022;
+		w1999 = ~(w2029 | w2022);
+		w1998 = ~(w2020 | w1999);
+		w2059 = ~(~dac_counter[1][5] & ~(dac_counter[1][4] & dac_counter[1][3] & dac_counter[1][2]));
+		w2031 = ~(~dac_counter[1][3] | ~dac_counter[1][2] | ~dac_counter[1][1]);
+		w2038 = ~(~w2003 & (w1999 | w2022 | w2031));
+		w2055 = ~(~dac_counter[1][5] | dac_counter[1][4] | ~dac_counter[1][3] | ~dac_counter[1][0]);
+		w2040 = ~(dac_counter[1][5] | ~dac_counter[1][4] | dac_counter[1][3] | ~dac_counter[1][0]);
 		
 		if (w2038)
-			accum_shifter[0] <= w1998 ? (w2059 ? accum_mem : accum_clip) : { accum_shifter[1][14:0], 1'h0 };
+			accum_shifter[0] <= w1998 ? { accum_shifter[1][14:0], 1'h0 } : (w2059 ? accum_mem : accum_clip);
 		else
 			accum_shifter[1] <= accum_shifter[0];
 		
 		DAC_CLK <= w2003;
 		
-		if (w2021 & w2003)
+		if (w2021 & ~w2003)
 			DAC_LR <= 1'h1;
-		if (~dac_enable | (w2020 & w2003))
+		if (~dac_enable | (w2020 & ~w2003))
 			DAC_LR <= 1'h0;
 		
-		if ((w2020 | w2021) & w2003)
+		if ((w2020 | w2021) & ~w2003)
 			DAC_LR2 <= 1'h1;
-		if (~dac_enable | ((w2055 | w2040) & w2003))
+		if (~dac_enable | ((w2055 | w2040) & ~w2003))
 			DAC_LR2 <= 1'h0;
 		
 	end
