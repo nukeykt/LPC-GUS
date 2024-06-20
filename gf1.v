@@ -114,7 +114,7 @@ module gf1
 	reg wave_sel3; // w173
 	
 	wire [28:0] wave_add1 = (wave_sel2 ? wave_inc2 : (wave_sel1 ? wave_mux_lo : wave_mux_hi)) ^ {29{wave_sel3}};
-	wire [28:0] wave_add2 = wave_sel1 ? wave_mux_hi : wave_mux_hi;
+	wire [28:0] wave_add2 = wave_sel1 ? wave_mux_hi : wave_mux_lo;
 	wire [29:0] wave_sum = { 1'h0, wave_add1 } + { 1'h0, wave_add2 } + { 29'h0, wave_sel3 };
 	reg [28:0] wave_sum_mem;
 	
@@ -198,7 +198,7 @@ module gf1
 			ram_output_latch[134],
 			ram_output_latch[131],
 			ram_output_latch[128],
-			ram_output_latch[127],
+			ram_output_latch[125],
 			ram_output_latch[122],
 			ram_output_latch[119],
 			ram_output_latch[116],
@@ -276,7 +276,7 @@ module gf1
 	reg ramp_sel3;
 	
 	wire [11:0] ramp_add1 = (ramp_sel2 ? 12'h0 : (ramp_sel1 ? ramp_mux_lo : ramp_mux_hi)) ^ {12{ramp_sel3}};
-	wire [11:0] ramp_add2 = ramp_sel1 ? ramp_mux_hi : ramp_mux_hi;
+	wire [11:0] ramp_add2 = ramp_sel1 ? ramp_mux_hi : ramp_mux_lo;
 	wire [12:0] ramp_sum = { 1'h0, ramp_add1 } + { 1'h0, ramp_add2 } + { 12'h0, ramp_sel3 };
 	reg [11:0] ramp_sum_mem;
 	
@@ -1006,7 +1006,7 @@ module gf1
 			else if (voice_reg_3)
 			begin
 				glob_data_bus[15:5] <= glob_data_bus[15:5] & {
-					ram_right_bus[100],
+					ram_right_bus[99],
 					ram_right_bus[96],
 					ram_right_bus[92],
 					ram_right_bus[88],
@@ -1038,7 +1038,7 @@ module gf1
 			else if (voice_reg_5)
 			begin
 				glob_data_bus[15:5] <= glob_data_bus[15:5] & {
-					ram_right_bus[99],
+					ram_right_bus[98],
 					ram_right_bus[95],
 					ram_right_bus[91],
 					ram_right_bus[87],
@@ -1243,7 +1243,7 @@ module gf1
 			end
 			else if (voice_reg_3)
 			begin
-				ram_input_latch[100] <= glob_data_bus[15];
+				ram_input_latch[99] <= glob_data_bus[15];
 				ram_input_latch[96] <= glob_data_bus[14];
 				ram_input_latch[92] <= glob_data_bus[13];
 				ram_input_latch[88] <= glob_data_bus[12];
@@ -1273,7 +1273,7 @@ module gf1
 			end
 			else if (voice_reg_5)
 			begin
-				ram_input_latch[99] <= glob_data_bus[15];
+				ram_input_latch[98] <= glob_data_bus[15];
 				ram_input_latch[95] <= glob_data_bus[14];
 				ram_input_latch[91] <= glob_data_bus[13];
 				ram_input_latch[87] <= glob_data_bus[12];
@@ -1717,7 +1717,7 @@ module gf1
 		end
 		
 		if (clk4_chc0)
-			wave_params_l2[0] <= { wave_irq_pend_next, wave_status_next, wave_dir_next };
+			wave_params_l2[0] <= { wave_irq_pend_next, wave_dir_next, wave_status_next };
 		if (clk3)
 			wave_params_l2[1] <= wave_params_l2[0];
 		if (clk4_chc0)
@@ -1867,7 +1867,7 @@ module gf1
 		end
 		
 		if (clk4_chc0)
-			ramp_params_l2[0] <= { ramp_irq_pend_next, ramp_status_next, ramp_dir_next };
+			ramp_params_l2[0] <= { ramp_irq_pend_next, ramp_dir_next, ramp_status_next };
 		if (clk3)
 			ramp_params_l2[1] <= ramp_params_l2[0];
 		if (clk4_chc0)
