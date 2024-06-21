@@ -170,7 +170,7 @@ module gf1
 			ram_output_latch[135],
 			ram_output_latch[132],
 			ram_output_latch[129],
-			ram_output_latch[128],
+			ram_output_latch[126],
 			ram_output_latch[123],
 			ram_output_latch[120],
 			ram_output_latch[117],
@@ -2499,9 +2499,9 @@ module gf1
 		// dma
 		
 		if (clk_sel[1] & chan_c0)
-			dram_refresh_slot <= 1'h1;
+			dram_refresh_slot = 1'h1;
 		else if (clk_sel[9])
-			dram_refresh_slot <= 1'h0;
+			dram_refresh_slot = 1'h0;
 		
 		if ((IOR | IOW) & DACK1 & dram_dma_en)
 			dram_dma_tc_l <= DMA_TC;
@@ -2603,28 +2603,28 @@ module gf1
 		
 		
 		if (~clk_sel[1])
-			dram_io_wr_dma_l <= dram_dma_write_state2;
+			dram_io_wr_dma_l = dram_dma_write_state2;
 		else
-			dram_io_wr_dma <= dram_io_wr_dma_l;
+			dram_io_wr_dma = dram_io_wr_dma_l;
 		
 		if (~clk_sel[1])
-			dram_io_rd_dma_l <= dram_dma_read_state3;
+			dram_io_rd_dma_l = dram_dma_read_state3;
 		else
-			dram_io_rd_dma <= dram_io_rd_dma_l;
+			dram_io_rd_dma = dram_io_rd_dma_l;
 		
 		if (~clk_sel[1])
-			dram_io_pp_l <= dram_cpu_pp;
+			dram_io_pp_l = dram_cpu_pp;
 		else
-			dram_io_pp <= dram_io_pp_l;
+			dram_io_pp = dram_io_pp_l;
 		
 		if (dram_refresh_slot | clk_sel[14] | reset_reg)
 		begin
-			dram_io_wr_dma_l <= 1'h0;
-			dram_io_wr_dma <= 1'h0;
-			dram_io_rd_dma_l <= 1'h0;
-			dram_io_rd_dma <= 1'h0;
-			dram_io_pp_l <= 1'h0;
-			dram_io_pp <= 1'h0;
+			dram_io_wr_dma_l = 1'h0;
+			dram_io_wr_dma = 1'h0;
+			dram_io_rd_dma_l = 1'h0;
+			dram_io_rd_dma = 1'h0;
+			dram_io_pp_l = 1'h0;
+			dram_io_pp = 1'h0;
 		end
 		
 		if (reset_reg | ~dram_cpu_pp)
@@ -2752,16 +2752,16 @@ module gf1
 		
 		w2056 = clk2 & chan_c0_l;
 		w33 = ~chan_c0_l & clk2;
-		w2036 = chan_c0_l & clk1;
-		w2035 = ~chan_c0_l & clk1;
+		w2036 = chan_c0 & clk1;
+		w2035 = ~chan_c0 & clk1;
 		//if (~chan_c0_l)
 		//	w2415 = clk4;
 		w2415 = ~chan_c0_l & clk4;
 		//if (chan_c0_l)
 		//	w2416 = clk4;
 		w2416 = chan_c0_l & clk4;
-		w1924 = ~chan_c0_l & clk3;
-		w1923 = chan_c0_l & clk3;
+		w1924 = chan_c0_l & clk3;
+		w1923 = ~chan_c0_l & clk3;
 		
 		if (w1924)
 		begin
@@ -2887,7 +2887,7 @@ module gf1
 			w262_l[0] <= w262;
 			w262_l[2] <= w262_l[1];
 		end
-		else
+		if (clk1)
 			w262_l[1] <= w262_l[0];
 		
 		

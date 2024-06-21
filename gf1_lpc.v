@@ -19,20 +19,75 @@ module gf1_lpc
 	begin
 		gf1_clk <= gf1_clk + 38843;
 	end
+	
+	reg [8:0] DADDR_l1;
+	reg [10:0] DADDR_l2;
+	
+	wire [8:0] DADDR;
+	wire [7:0] DRAM_o;
+	wire [63:0] DRAM_o2 = { DRAM_o, DRAM_o, DRAM_o, DRAM_o, DRAM_o, DRAM_o, DRAM_o, DRAM_o };
+	wire [63:0] DRAM_i2;
+	reg [7:0] DRAM_i;
+	reg [7:0] DRAM_i_l;
+	reg [7:0] byteena;
+	reg DWE;
+	wire DRAM_WE;
 
 	reg IOW;
 	reg IOR;
 	reg IO16;
 	reg DACK1;
-	reg [7:0] dram[0:262143];
-	
-	reg o_RAS;
-	reg o_CAS;
 	
 	wire RAS;
-	wire CAS;
+	wire CAS0;
+	wire CAS1;
+	wire CAS2;
+	wire CAS3;
 	
-	wire CASA = CAS & RAS;
+	always @(*)
+	begin
+		case(DADDR_l1[2:0])
+			3'h0: DRAM_i <= DRAM_i2[7:0];
+			3'h1: DRAM_i <= DRAM_i2[15:8];
+			3'h2: DRAM_i <= DRAM_i2[23:16];
+			3'h3: DRAM_i <= DRAM_i2[31:24];
+			3'h4: DRAM_i <= DRAM_i2[39:32];
+			3'h5: DRAM_i <= DRAM_i2[47:40];
+			3'h6: DRAM_i <= DRAM_i2[55:48];
+			3'h7: DRAM_i <= DRAM_i2[63:56];
+		endcase
+		case(DADDR_l1[2:0])
+			3'h0: byteena <= 8'b00000001;
+			3'h1: byteena <= 8'b00000010;
+			3'h2: byteena <= 8'b00000100;
+			3'h3: byteena <= 8'b00001000;
+			3'h4: byteena <= 8'b00010000;
+			3'h5: byteena <= 8'b00100000;
+			3'h6: byteena <= 8'b01000000;
+			3'h7: byteena <= 8'b10000000;
+		endcase
+	end
+	
+	wire CASA0 = CAS0 & RAS;
+	wire CASA1 = CAS1 & RAS;
+	wire CASA2 = CAS2 & RAS;
+	wire CASA3 = CAS3 & RAS;
+	
+	ram ram
+		(
+		.address({DADDR_l2, DADDR_l1[8:3]}),
+		.clock(CLK),
+		.data(DRAM_o2),
+		.wren(DWE),
+		.byteena(byteena),
+		.q(DRAM_i2)
+		);
+	
+	reg o_RAS;
+	reg o_CAS0;
+	reg o_CAS1;
+	reg o_CAS2;
+	reg o_CAS3;
 	
 	reg [15:0] dac_shifter;
 	reg [15:0] dac_left;
@@ -45,13 +100,6 @@ module gf1_lpc
 	
 	assign audio_l = dac_left;
 	assign audio_r = dac_right;
-	
-	wire [8:0] DADDR;
-	wire [7:0] DRAM_o;
-	reg [7:0] DRAM_i;
-	reg [17:0] DADDR_l;
-	reg DWE;
-	wire DRAM_WE;
 	
 	
 	reg [7:0] lpc_cnt;
@@ -128,7 +176,10 @@ module gf1_lpc
 		.IRQ2(IRQ2),
 		.RESET(reset),
 		.DMA_TC(io_dma_tc),
-		.DRAM_CAS0(CAS),
+		.DRAM_CAS0(CAS0),
+		.DRAM_CAS1(CAS1),
+		.DRAM_CAS2(CAS2),
+		.DRAM_CAS3(CAS3),
 		.DRAM_RAS(RAS),
 		.DRAM_ADDR(DADDR),
 		.DRAM_DATA_i(DRAM_i),
@@ -144,28 +195,34 @@ module gf1_lpc
 	begin
 		// dram
 		if (RAS & ~o_RAS)
-			DADDR_l[17:9] <= DADDR;
-		if (CASA & ~o_CAS)
 		begin
-			DADDR_l[8:0] <= DADDR;
-			DWE <= DRAM_WE;
+			DADDR_l2[8:0] <= DADDR;
 		end
-		if (CASA & o_CAS)
+		if ((CASA0 & ~o_CAS0) | (CASA1 & ~o_CAS1)/* | (CASA2 & ~o_CAS2) | (CASA3 & ~o_CAS3)*/)
 		begin
-			if (DWE)
-				dram[DADDR_l] <= DRAM_o;
-			else
-				DRAM_i <= dram[DADDR_l];
+			if (o_RAS)
+			begin
+				DADDR_l1 <= DADDR;
+				DADDR_l2[10:9] <= { CASA2 | CASA3, CASA1 | CASA3 };
+				DWE <= DRAM_WE;
+			end
+		end
+		if ((~CASA0 & o_CAS0) | (~CASA1 & o_CAS1))
+		begin
+			DWE <= 0;
 		end
 		
-		o_CAS <= CASA;
+		o_CAS0 <= CASA0;
+		o_CAS1 <= CASA1;
+		o_CAS2 <= CASA2;
+		o_CAS3 <= CASA3;
 		o_RAS <= RAS;
 		
 		// dac
 		
 		if (dac_clk & ~o_dac_clk)
 		begin
-			dac_shifter = { dac_shifter[14:0], dac_data };
+			dac_shifter <= { dac_shifter[14:0], dac_data };
 			if (o_dac_lr & ~dac_lr)
 				dac_left <= dac_shifter;
 			else if (~o_dac_lr & dac_lr)
@@ -196,7 +253,7 @@ module gf1_lpc
 			o_DREQ <= 0;
 			dma_req <= 0;
 			o_IRQ <= 0;
-			irq_sleep <= 0;
+			irq_sleep <= 1;
 			irq_state <= 0;
 			sr_state <= 0;
 			sr_value <= 0;
@@ -371,8 +428,8 @@ module gf1_lpc
 					9: begin lpc_out <= 4'h0; o_DREQ <= 1'h0; io_dma_tc <= 0; end
 					10: lpc_out <= rd_data[3:0];
 					11: lpc_out <= rd_data[7:4];
-					10: lpc_out <= rd_data[11:8];
-					11: lpc_out <= rd_data[15:12];
+					12: lpc_out <= rd_data[11:8];
+					13: lpc_out <= rd_data[15:12];
 					14: begin lpc_out <= 4'hf; end
 					15: begin lpc_state <= 0; end
 				endcase
