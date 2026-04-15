@@ -2391,7 +2391,7 @@ module gf1
 		else
 		begin
 			clk_div_cnt[1] = clk_div_cnt[0];
-			clk_div_reset[0] = clk_div_cnt[1][3] & clk_div_cnt[1][1];
+			clk_div_reset[0] = clk_div_cnt[1][3] & clk_div_cnt[1][0];   // count from 0 to 9
 		end
 		
 		if (RESET | clk_div_reset[1])
